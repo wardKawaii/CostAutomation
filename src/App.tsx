@@ -1,8 +1,20 @@
-// App.js
-import React, { useState } from 'react';
+// App.tsx
+import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 import backgroundImg from './assets/EverestWallpaper.jpg';
 import logoImg from './assets/WhiteLogoMadison.png';
+import * as AppFunctions from './App.js';
+
+const {
+  readExcelFile,
+  parseBeanieExcel,
+  parseBallCapsExcel,
+  handleDragOver,
+  handleDragEnter,
+  handleDragLeave,
+  handleDrop,
+  handleFileInput,
+} = AppFunctions as any;
 
 // Sample data
 const initialData = [
@@ -24,6 +36,32 @@ const App = () => {
   const [filteredData, setFilteredData] = useState(initialData);
   const [showBeanieTemplate, setShowBeanieTemplate] = useState(false);
   const [showBallCapsTemplate, setShowBallCapsTemplate] = useState(false);
+  const [beanieData, setBeanieData] = useState<any>(null);
+  const [ballCapsData, setBallCapsData] = useState<any>(null);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const beanieFileInputRef = useRef<HTMLInputElement>(null);
+  const ballCapsFileInputRef = useRef<HTMLInputElement>(null);
+  const [beanieFormData, setBeanieFormData] = useState<any>({
+    customerInfo: {},
+    yarn: [],
+    fabric: [],
+    trim: [],
+    knitting: [],
+    operations: [],
+    packaging: [],
+    overhead: [],
+    notes: ''
+  });
+  const [ballCapsFormData, setBallCapsFormData] = useState<any>({
+    customerInfo: {},
+    fabrics: [],
+    otherFabrics: [],
+    trims: [],
+    operations: [],
+    packaging: [],
+    overhead: [],
+    notes: ''
+  });
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
@@ -57,6 +95,68 @@ const App = () => {
     setShowBallCapsTemplate(!showBallCapsTemplate);
     setShowBeanieTemplate(false);
   };
+
+  const processFile = async (file: File, templateType: 'beanie' | 'ballcaps') => {
+    try {
+      setUploadStatus('Processing file...');
+      const workbook = await readExcelFile(file);
+      
+      if (templateType === 'beanie') {
+        const parsedData = parseBeanieExcel(workbook);
+        setBeanieData(parsedData);
+        setBeanieFormData(parsedData);
+        console.log('Beanie data loaded:', parsedData);
+        setUploadStatus('✓ Beanie file loaded successfully');
+      } else {
+        const parsedData = parseBallCapsExcel(workbook);
+        setBallCapsData(parsedData);
+        setBallCapsFormData(parsedData);
+        console.log('BallCaps data loaded:', parsedData);
+        setUploadStatus('✓ BallCaps file loaded successfully');
+      }
+      
+      setTimeout(() => setUploadStatus(''), 3000);
+    } catch (error) {
+      setUploadStatus('✗ Error processing file');
+      console.error('File processing error:', error);
+      setTimeout(() => setUploadStatus(''), 3000);
+    }
+  };
+
+  const handleBeanieFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    handleDrop(e, (file: File) => processFile(file, 'beanie'));
+  };
+
+  const handleBallCapsFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    handleDrop(e, (file: File) => processFile(file, 'ballcaps'));
+  };
+
+  const handleBeanieFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileInput(e, (file: File) => processFile(file, 'beanie'));
+  };
+
+  const handleBallCapsFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileInput(e, (file: File) => processFile(file, 'ballcaps'));
+  };
+
+  // Prevent default drag & drop behavior globally
+  useEffect(() => {
+    const preventDefaults = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handlers: Array<keyof DocumentEventMap> = ['dragenter', 'dragover', 'dragleave', 'drop'];
+    handlers.forEach((eventName) => {
+      document.addEventListener(eventName, preventDefaults as EventListener, false);
+    });
+
+    return () => {
+      handlers.forEach((eventName) => {
+        document.removeEventListener(eventName, preventDefaults as EventListener, false);
+      });
+    };
+  }, []);
 
   return (
     <div className="app-container" style={{ backgroundImage: `url(${backgroundImg})` }}>
@@ -179,7 +279,7 @@ const App = () => {
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -200,7 +300,7 @@ const App = () => {
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -222,7 +322,7 @@ const App = () => {
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                       <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -241,14 +341,14 @@ const App = () => {
                       <tr>
                         <th>OPERATION</th>
                         <th>SAM</th>
-                        <th colSpan={2}>COST (USD/MIN)</th>
+                        <th colSpan={2 as any}>COST (USD/MIN)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
+                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
+                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
+                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -261,13 +361,13 @@ const App = () => {
                       <tr>
                         <th>TYPE</th>
                         <th>NOTES</th>
-                        <th colSpan={2}>COST</th>
+                        <th colSpan={2 as any}>COST</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
+                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
+                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -280,13 +380,13 @@ const App = () => {
                       <tr>
                         <th>OVERHEAD/PROFIT</th>
                         <th>Factory Notes</th>
-                        <th colSpan={2}>COST</th>
+                        <th colSpan={2 as any}>COST</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
+                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
+                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -345,11 +445,27 @@ const App = () => {
                   <p>Factory Call</p>
                 </div>
 
-                <div className="file-upload-panel">
+                <div
+                  className="file-upload-panel"
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleBallCapsFileDrop}
+                  onClick={() => ballCapsFileInputRef.current?.click()}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <input
+                    ref={ballCapsFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.xlsm,.csv"
+                    onChange={handleBallCapsFileInput}
+                    style={{ display: 'none' }}
+                  />
                   <div className="file-upload-icon">📄</div>
                   <p>drag & drop</p>
                   <p className="file-upload-subtext">or click to select</p>
                   <p className="file-types">CSV • XLSX • XLSM</p>
+                  {uploadStatus && <p style={{ color: uploadStatus.includes('✓') ? 'green' : 'red', marginTop: '10px' }}>{uploadStatus}</p>}
                 </div>
               </div>
             </div>
@@ -382,10 +498,23 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {beanieFormData.yarn && beanieFormData.yarn.length > 0 ? (
+                        beanieFormData.yarn.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description} readOnly /></td>
+                            <td><input type="text" value={item.consumption} readOnly /></td>
+                            <td><input type="text" value={item.price} readOnly /></td>
+                            <td><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.yarn ? beanieFormData.yarn.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -403,10 +532,23 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {beanieFormData.fabric && beanieFormData.fabric.length > 0 ? (
+                        beanieFormData.fabric.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description} readOnly /></td>
+                            <td><input type="text" value={item.consumption} readOnly /></td>
+                            <td><input type="text" value={item.price} readOnly /></td>
+                            <td><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.fabric ? beanieFormData.fabric.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -424,10 +566,23 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {beanieFormData.trim && beanieFormData.trim.length > 0 ? (
+                        beanieFormData.trim.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description} readOnly /></td>
+                            <td><input type="text" value={item.consumption} readOnly /></td>
+                            <td><input type="text" value={item.price} readOnly /></td>
+                            <td><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.trim ? beanieFormData.trim.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -435,7 +590,11 @@ const App = () => {
                 {/* Total Materials Cost */}
                 <div className="total-box">
                   <div className="total-label">TOTAL MATERIAL AND SUBMATERIALS COST:</div>
-                  <div className="total-value">$0.00</div>
+                  <div className="total-value">${(
+                    (beanieFormData.yarn ? beanieFormData.yarn.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.fabric ? beanieFormData.fabric.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.trim ? beanieFormData.trim.reduce((sum, item) => sum + item.cost, 0) : 0)
+                  ).toFixed(2)}</div>
                 </div>
 
                 {/* KNITTING Section */}
@@ -451,10 +610,23 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {beanieFormData.knitting && beanieFormData.knitting.length > 0 ? (
+                        beanieFormData.knitting.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description} readOnly /></td>
+                            <td><input type="text" value={item.consumption} readOnly /></td>
+                            <td><input type="text" value={item.price} readOnly /></td>
+                            <td><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.knitting ? beanieFormData.knitting.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -471,11 +643,23 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {beanieFormData.operations && beanieFormData.operations.length > 0 ? (
+                        beanieFormData.operations.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description} readOnly /></td>
+                            <td><input type="text" value={item.consumption} readOnly /></td>
+                            <td colSpan={2}><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.operations ? beanieFormData.operations.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -492,8 +676,20 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {beanieFormData.packaging && beanieFormData.packaging.length > 0 ? (
+                        beanieFormData.packaging.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description} readOnly /></td>
+                            <td><input type="text" /></td>
+                            <td colSpan={2}><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.packaging ? beanieFormData.packaging.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -510,8 +706,20 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {beanieFormData.overhead && beanieFormData.overhead.length > 0 ? (
+                        beanieFormData.overhead.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description} readOnly /></td>
+                            <td><input type="text" /></td>
+                            <td colSpan={2}><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.overhead ? beanieFormData.overhead.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -519,7 +727,15 @@ const App = () => {
                 {/* Total Factory Cost */}
                 <div className="total-box">
                   <div className="total-label">TOTAL FACTORY COST:</div>
-                  <div className="total-value">$0.00</div>
+                  <div className="total-value">${(
+                    (beanieFormData.yarn ? beanieFormData.yarn.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.fabric ? beanieFormData.fabric.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.trim ? beanieFormData.trim.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.knitting ? beanieFormData.knitting.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.operations ? beanieFormData.operations.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.packaging ? beanieFormData.packaging.reduce((sum, item) => sum + item.cost, 0) : 0) +
+                    (beanieFormData.overhead ? beanieFormData.overhead.reduce((sum, item) => sum + item.cost, 0) : 0)
+                  ).toFixed(2)}</div>
                 </div>
               </div>
 
@@ -569,11 +785,27 @@ const App = () => {
                   <p>Factory Call</p>
                 </div>
 
-                <div className="file-upload-panel">
+                <div
+                  className="file-upload-panel"
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleBeanieFileDrop}
+                  onClick={() => beanieFileInputRef.current?.click()}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <input
+                    ref={beanieFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.xlsm,.csv"
+                    onChange={handleBeanieFileInput}
+                    style={{ display: 'none' }}
+                  />
                   <div className="file-upload-icon">📄</div>
                   <p>drag & drop</p>
                   <p className="file-upload-subtext">or click to select</p>
                   <p className="file-types">CSV • XLSX • XLSM</p>
+                  {uploadStatus && <p style={{ color: uploadStatus.includes('✓') ? 'green' : 'red', marginTop: '10px' }}>{uploadStatus}</p>}
                 </div>
               </div>
             </div>
