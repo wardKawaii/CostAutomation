@@ -1,6 +1,28 @@
 // App.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
+import './animations.css';
+
+interface CostItem {
+  type: string;
+  notes: string;
+  cost: number;
+  description?: string;
+  consumption?: number;
+  price?: number;
+}
+
+interface BeanieFormData {
+  customerInfo: Record<string, string>;
+  yarn: CostItem[];
+  fabric: CostItem[];
+  trim: CostItem[];
+  knitting: CostItem[];
+  operations: CostItem[];
+  packaging: CostItem[];
+  overhead: CostItem[];
+  notes: string;
+}
 import backgroundImg from './assets/EverestWallpaper.jpg';
 import logoImg from './assets/WhiteLogoMadison.png';
 import * as AppFunctions from './App.js';
@@ -36,12 +58,15 @@ const App = () => {
   const [filteredData, setFilteredData] = useState(initialData);
   const [showBeanieTemplate, setShowBeanieTemplate] = useState(false);
   const [showBallCapsTemplate, setShowBallCapsTemplate] = useState(false);
+  const [showImportSection, setShowImportSection] = useState(true);
   const [beanieData, setBeanieData] = useState<any>(null);
   const [ballCapsData, setBallCapsData] = useState<any>(null);
   const [uploadStatus, setUploadStatus] = useState('');
   const beanieFileInputRef = useRef<HTMLInputElement>(null);
   const ballCapsFileInputRef = useRef<HTMLInputElement>(null);
-  const [beanieFormData, setBeanieFormData] = useState<any>({
+  const beanieTemplateRef = useRef<HTMLDivElement>(null);
+  const ballCapsTemplateRef = useRef<HTMLDivElement>(null);
+  const [beanieFormData, setBeanieFormData] = useState<BeanieFormData>({
     customerInfo: {},
     yarn: [],
     fabric: [],
@@ -82,18 +107,47 @@ const App = () => {
     setFilteredData(data);
   };
 
+  const handleBack = () => {
+    setShowBeanieTemplate(false);
+    setShowBallCapsTemplate(false);
+    setShowImportSection(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleExport = () => {
     alert('Export functionality would be implemented here');
   };
 
   const handleBeanieTemplate = () => {
-    setShowBeanieTemplate(!showBeanieTemplate);
+    setShowBeanieTemplate(true);
     setShowBallCapsTemplate(false);
+    setShowImportSection(false);
+    
+    // Wait for state to update and template to render
+    setTimeout(() => {
+      const yOffset = -30;
+      const element = beanieTemplateRef.current;
+      if (element) {
+        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }, 200);
   };
 
   const handleBallCapsTemplate = () => {
-    setShowBallCapsTemplate(!showBallCapsTemplate);
+    setShowBallCapsTemplate(true);
     setShowBeanieTemplate(false);
+    setShowImportSection(false);
+    
+    // Wait for state to update and template to render
+    setTimeout(() => {
+      const yOffset = -30;
+      const element = ballCapsTemplateRef.current;
+      if (element) {
+        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }, 200);
   };
 
   const processFile = async (file: File, templateType: 'beanie' | 'ballcaps') => {
@@ -236,33 +290,46 @@ const App = () => {
           </div>
         </div>
 
-        <div className="import-section">
-          <div className="import-text">
-            IMPORT YOUR EXCEL FILE
+        {showImportSection && (
+          <div className="import-section">
+            <div className="import-text">
+              IMPORT YOUR EXCEL FILE
+            </div>
+            <div className="import-subtext">
+              CHOOSE YOUR TEMPLATE
+            </div>
+            <div className="template-buttons">
+              <button 
+                className="btn-template" 
+                onClick={handleBeanieTemplate}
+                aria-label="Select Beanie Template"
+              >
+                BEANIE TEMPLATE
+              </button>
+              <button 
+                className="btn-template" 
+                onClick={handleBallCapsTemplate}
+                aria-label="Select BallCaps Template"
+              >
+                BALLCAPS TEMPLATE
+              </button>
+            </div>
           </div>
-          <div className="template-buttons">
-            <button className="btn btn-template" onClick={handleBeanieTemplate}>
-              Beanie Template
-            </button>
-            <button className="btn btn-template" onClick={handleBallCapsTemplate}>
-              BallCaps Template
-            </button>
-          </div>
-        </div>
+        )}
 
         {showBallCapsTemplate && (
-          <div className="beanie-template-panel">
+          <div className="ballcaps-template-panel" ref={ballCapsTemplateRef}>
             <div className="template-header">
               <h2>Factory Cost Breakdown</h2>
               <p className="template-subtitle">Template for BallCaps</p>
               <div className="template-header-buttons">
                 <button className="btn btn-save">Save to Database</button>
-                <button className="btn btn-back" onClick={handleBallCapsTemplate}>← Back to Selection</button>
+                <button className="btn btn-back" onClick={handleBack}>← Back to Selection</button>
               </div>
             </div>
 
             <div className="template-content">
-              <div className="template-left">
+                <div className="template-left">
                 {/* FABRICS Section */}
                 <div className="cost-section">
                   <div className="section-header">FABRICS</div>
@@ -276,15 +343,24 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {ballCapsFormData.fabrics && ballCapsFormData.fabrics.length > 0 ? (
+                        ballCapsFormData.fabrics.map((item: any, idx: number) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description || ''} readOnly /></td>
+                            <td><input type="text" value={item.consumption || ''} readOnly /></td>
+                            <td><input type="text" value={item.price || ''} readOnly /></td>
+                            <td><input type="text" value={item.cost ? item.cost.toFixed(2) : ''} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                        </>
+                      )}
                     </tbody>
                   </table>
-                </div>
-
-                {/* OTHER FABRICS - TRIM/S Section */}
+                </div>                {/* OTHER FABRICS - TRIM/S Section */}
                 <div className="cost-section">
                   <div className="section-header">OTHER FABRICS - TRIM/S</div>
                   <table className="cost-table">
@@ -297,12 +373,31 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {ballCapsFormData.otherFabrics && ballCapsFormData.otherFabrics.length > 0 ? (
+                        ballCapsFormData.otherFabrics.map((item: any, idx: number) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description || ''} readOnly /></td>
+                            <td><input type="text" value={item.consumption || ''} readOnly /></td>
+                            <td><input type="text" value={item.price || ''} readOnly /></td>
+                            <td><input type="text" value={item.cost ? item.cost.toFixed(2) : ''} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                        </>
+                      )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Total Materials Cost */}
+                <div className="total-box">
+                  <div className="total-label">TOTAL MATERIAL AND SUBMATERIALS COST:</div>
+                  <div className="total-value">
+                    ${ballCapsFormData.totalMaterialCost ? ballCapsFormData.totalMaterialCost.toFixed(2) : '2.09'}
+                  </div>
                 </div>
 
                 {/* TRIM/S Section */}
@@ -318,11 +413,21 @@ const App = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {ballCapsFormData.trims && ballCapsFormData.trims.length > 0 ? (
+                        ballCapsFormData.trims.map((item: any, idx: number) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.description || ''} readOnly /></td>
+                            <td><input type="text" value={item.consumption || ''} readOnly /></td>
+                            <td><input type="text" value={item.price || ''} readOnly /></td>
+                            <td><input type="text" value={item.cost ? item.cost.toFixed(2) : ''} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
+                        </>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -330,10 +435,10 @@ const App = () => {
                 {/* Total Materials Cost */}
                 <div className="total-box">
                   <div className="total-label">TOTAL MATERIAL AND SUBMATERIALS COST:</div>
-                  <div className="total-value">$0.00</div>
-                </div>
-
-                {/* OPERATIONS Section */}
+                  <div className="total-value">
+                    ${ballCapsFormData.totalMaterialCost ? ballCapsFormData.totalMaterialCost.toFixed(2) : '2.09'}
+                  </div>
+                </div>                {/* OPERATIONS Section */}
                 <div className="cost-section">
                   <div className="section-header">OPERATIONS</div>
                   <table className="cost-table">
@@ -361,13 +466,28 @@ const App = () => {
                       <tr>
                         <th>TYPE</th>
                         <th>NOTES</th>
-                        <th colSpan={2 as any}>COST</th>
+                        <th colSpan={2}>COST</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {ballCapsFormData.packaging && ballCapsFormData.packaging.length > 0 ? (
+                        ballCapsFormData.packaging.map((item: any, idx: number) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.type || ''} readOnly /></td>
+                            <td><input type="text" value={item.notes || ''} readOnly /></td>
+                            <td colSpan={2}><input type="text" value={item.cost ? item.cost.toFixed(2) : ''} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                        </>
+                      )}
+                      <tr className="subtotal-row">
+                        <td colSpan={3}>SUB TOTAL</td>
+                        <td>${ballCapsFormData.packagingTotal ? ballCapsFormData.packagingTotal.toFixed(2) : '0.00'}</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -378,15 +498,26 @@ const App = () => {
                   <table className="cost-table">
                     <thead>
                       <tr>
-                        <th>OVERHEAD/PROFIT</th>
+                        <th>TYPE</th>
                         <th>Factory Notes</th>
-                        <th colSpan={2 as any}>COST</th>
+                        <th colSpan={2}>COST</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
-                      <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2 as any}><input type="text" /></td></tr>
-                      <tr className="subtotal-row"><td colSpan={3 as any}>SUB TOTAL</td><td>$0.00</td></tr>
+                      {ballCapsFormData.overhead && ballCapsFormData.overhead.length > 0 ? (
+                        ballCapsFormData.overhead.map((item: any, idx: number) => (
+                          <tr key={idx}>
+                            <td><input type="text" value={item.type || ''} readOnly /></td>
+                            <td><input type="text" value={item.notes || ''} readOnly /></td>
+                            <td colSpan={2}><input type="text" value={item.cost ? item.cost.toFixed(2) : ''} readOnly /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr><td><input type="text" value="OVERHEAD" readOnly /></td><td><input type="text" /></td><td colSpan={2}><input type="text" value="0.25" readOnly /></td></tr>
+                          <tr><td><input type="text" value="PROFIT" readOnly /></td><td><input type="text" /></td><td colSpan={2}><input type="text" value="0.80" readOnly /></td></tr>
+                        </>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -394,35 +525,38 @@ const App = () => {
                 {/* Total Factory Cost */}
                 <div className="total-box">
                   <div className="total-label">TOTAL FACTORY COST:</div>
-                  <div className="total-value">$0.00</div>
+                  <div className="total-value">
+                    ${ballCapsFormData.totalFactoryCost ? ballCapsFormData.totalFactoryCost.toFixed(2) : '3.16'}
+                  </div>
                 </div>
+
               </div>
 
               <div className="template-right">
                 <div className="info-panel">
                   <div className="form-group">
                     <label>Customer:</label>
-                    <input type="text" placeholder="Enter customer name" />
+                    <input type="text" placeholder="Enter customer name" value={ballCapsFormData.customerInfo.customer || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Season:</label>
-                    <input type="text" placeholder="Enter season" />
+                    <input type="text" placeholder="Enter season" value={ballCapsFormData.customerInfo.season || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Style#:</label>
-                    <input type="text" placeholder="Enter style number" />
+                    <input type="text" placeholder="Enter style number" value={ballCapsFormData.customerInfo.styleNumber || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Style Name:</label>
-                    <input type="text" placeholder="Enter style name" />
+                    <input type="text" placeholder="Enter style name" value={ballCapsFormData.customerInfo.styleName || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>MOQ:</label>
-                    <input type="text" placeholder="Enter MOQ" />
+                    <input type="text" placeholder="Enter MOQ" value={ballCapsFormData.customerInfo.moq || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Leadtime:</label>
-                    <input type="text" placeholder="Enter leadtime" />
+                    <input type="text" placeholder="Enter leadtime" value={ballCapsFormData.customerInfo.leadtime || ''} readOnly />
                   </div>
                 </div>
 
@@ -473,13 +607,13 @@ const App = () => {
         )}
 
         {showBeanieTemplate && (
-          <div className="beanie-template-panel">
+          <div className="beanie-template-panel" ref={beanieTemplateRef}>
             <div className="template-header">
               <h2>Factory Cost Breakdown</h2>
               <p className="template-subtitle">Template for Beanie</p>
               <div className="template-header-buttons">
                 <button className="btn btn-save">Save to Database</button>
-                <button className="btn btn-back" onClick={handleBeanieTemplate}>← Back to Selection</button>
+                <button className="btn btn-back" onClick={handleBack}>← Back to Selection</button>
               </div>
             </div>
 
@@ -499,7 +633,7 @@ const App = () => {
                     </thead>
                     <tbody>
                       {beanieFormData.yarn && beanieFormData.yarn.length > 0 ? (
-                        beanieFormData.yarn.map((item, idx) => (
+                        beanieFormData.yarn.map((item: CostItem, idx: number) => (
                           <tr key={idx}>
                             <td><input type="text" value={item.description} readOnly /></td>
                             <td><input type="text" value={item.consumption} readOnly /></td>
@@ -514,7 +648,6 @@ const App = () => {
                           <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                         </>
                       )}
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.yarn ? beanieFormData.yarn.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -533,7 +666,7 @@ const App = () => {
                     </thead>
                     <tbody>
                       {beanieFormData.fabric && beanieFormData.fabric.length > 0 ? (
-                        beanieFormData.fabric.map((item, idx) => (
+                        beanieFormData.fabric.map((item: CostItem, idx: number) => (
                           <tr key={idx}>
                             <td><input type="text" value={item.description} readOnly /></td>
                             <td><input type="text" value={item.consumption} readOnly /></td>
@@ -548,7 +681,6 @@ const App = () => {
                           <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                         </>
                       )}
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.fabric ? beanieFormData.fabric.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -567,7 +699,7 @@ const App = () => {
                     </thead>
                     <tbody>
                       {beanieFormData.trim && beanieFormData.trim.length > 0 ? (
-                        beanieFormData.trim.map((item, idx) => (
+                        beanieFormData.trim.map((item: CostItem, idx: number) => (
                           <tr key={idx}>
                             <td><input type="text" value={item.description} readOnly /></td>
                             <td><input type="text" value={item.consumption} readOnly /></td>
@@ -582,7 +714,6 @@ const App = () => {
                           <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                         </>
                       )}
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.trim ? beanieFormData.trim.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -611,7 +742,7 @@ const App = () => {
                     </thead>
                     <tbody>
                       {beanieFormData.knitting && beanieFormData.knitting.length > 0 ? (
-                        beanieFormData.knitting.map((item, idx) => (
+                        beanieFormData.knitting.map((item: CostItem, idx: number) => (
                           <tr key={idx}>
                             <td><input type="text" value={item.description} readOnly /></td>
                             <td><input type="text" value={item.consumption} readOnly /></td>
@@ -626,7 +757,6 @@ const App = () => {
                           <tr><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td><td><input type="text" /></td></tr>
                         </>
                       )}
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.knitting ? beanieFormData.knitting.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -644,7 +774,7 @@ const App = () => {
                     </thead>
                     <tbody>
                       {beanieFormData.operations && beanieFormData.operations.length > 0 ? (
-                        beanieFormData.operations.map((item, idx) => (
+                        beanieFormData.operations.map((item: CostItem, idx: number) => (
                           <tr key={idx}>
                             <td><input type="text" value={item.description} readOnly /></td>
                             <td><input type="text" value={item.consumption} readOnly /></td>
@@ -659,7 +789,6 @@ const App = () => {
                           <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
                         </>
                       )}
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.operations ? beanieFormData.operations.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -670,7 +799,7 @@ const App = () => {
                   <table className="cost-table">
                     <thead>
                       <tr>
-                        <th>PACKAGING</th>
+                        <th>TYPE</th>
                         <th>Factory Notes</th>
                         <th colSpan={2}>COST</th>
                       </tr>
@@ -679,17 +808,17 @@ const App = () => {
                       {beanieFormData.packaging && beanieFormData.packaging.length > 0 ? (
                         beanieFormData.packaging.map((item, idx) => (
                           <tr key={idx}>
-                            <td><input type="text" value={item.description} readOnly /></td>
-                            <td><input type="text" /></td>
-                            <td colSpan={2}><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                            <td>{item.type || ''}</td>
+                            <td>{item.notes || ''}</td>
+                            <td colSpan={2}>${item.cost ? item.cost.toFixed(2) : '0.00'}</td>
                           </tr>
                         ))
                       ) : (
                         <>
                           <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
                         </>
                       )}
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.packaging ? beanieFormData.packaging.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -700,26 +829,26 @@ const App = () => {
                   <table className="cost-table">
                     <thead>
                       <tr>
-                        <th>OVERHEAD/PROFIT</th>
+                        <th>TYPE</th>
                         <th>Factory Notes</th>
                         <th colSpan={2}>COST</th>
                       </tr>
                     </thead>
                     <tbody>
                       {beanieFormData.overhead && beanieFormData.overhead.length > 0 ? (
-                        beanieFormData.overhead.map((item, idx) => (
+                        beanieFormData.overhead.map((item: CostItem, idx: number) => (
                           <tr key={idx}>
-                            <td><input type="text" value={item.description} readOnly /></td>
-                            <td><input type="text" /></td>
-                            <td colSpan={2}><input type="text" value={`${item.cost.toFixed(2)}`} readOnly /></td>
+                            <td>{item.type || ''}</td>
+                            <td>{item.notes || ''}</td>
+                            <td colSpan={2}>${item.cost ? item.cost.toFixed(2) : '0.00'}</td>
                           </tr>
                         ))
                       ) : (
                         <>
                           <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
+                          <tr><td><input type="text" /></td><td><input type="text" /></td><td colSpan={2}><input type="text" /></td></tr>
                         </>
                       )}
-                      <tr className="subtotal-row"><td colSpan={3}>SUB TOTAL</td><td>${(beanieFormData.overhead ? beanieFormData.overhead.reduce((sum, item) => sum + item.cost, 0) : 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -728,13 +857,13 @@ const App = () => {
                 <div className="total-box">
                   <div className="total-label">TOTAL FACTORY COST:</div>
                   <div className="total-value">${(
-                    (beanieFormData.yarn ? beanieFormData.yarn.reduce((sum, item) => sum + item.cost, 0) : 0) +
-                    (beanieFormData.fabric ? beanieFormData.fabric.reduce((sum, item) => sum + item.cost, 0) : 0) +
-                    (beanieFormData.trim ? beanieFormData.trim.reduce((sum, item) => sum + item.cost, 0) : 0) +
-                    (beanieFormData.knitting ? beanieFormData.knitting.reduce((sum, item) => sum + item.cost, 0) : 0) +
-                    (beanieFormData.operations ? beanieFormData.operations.reduce((sum, item) => sum + item.cost, 0) : 0) +
-                    (beanieFormData.packaging ? beanieFormData.packaging.reduce((sum, item) => sum + item.cost, 0) : 0) +
-                    (beanieFormData.overhead ? beanieFormData.overhead.reduce((sum, item) => sum + item.cost, 0) : 0)
+                    (beanieFormData.yarn ? beanieFormData.yarn.reduce((sum: number, item: CostItem) => sum + (item.cost || 0), 0) : 0) +
+                    (beanieFormData.fabric ? beanieFormData.fabric.reduce((sum: number, item: CostItem) => sum + (item.cost || 0), 0) : 0) +
+                    (beanieFormData.trim ? beanieFormData.trim.reduce((sum: number, item: CostItem) => sum + (item.cost || 0), 0) : 0) +
+                    (beanieFormData.knitting ? beanieFormData.knitting.reduce((sum: number, item: CostItem) => sum + (item.cost || 0), 0) : 0) +
+                    (beanieFormData.operations ? beanieFormData.operations.reduce((sum: number, item: CostItem) => sum + (item.cost || 0), 0) : 0) +
+                    (beanieFormData.packaging ? beanieFormData.packaging.reduce((sum: number, item: CostItem) => sum + (item.cost || 0), 0) : 0) +
+                    (beanieFormData.overhead ? beanieFormData.overhead.reduce((sum: number, item: CostItem) => sum + (item.cost || 0), 0) : 0)
                   ).toFixed(2)}</div>
                 </div>
               </div>
@@ -743,27 +872,27 @@ const App = () => {
                 <div className="info-panel">
                   <div className="form-group">
                     <label>Customer:</label>
-                    <input type="text" placeholder="Enter customer name" />
+                    <input type="text" placeholder="Enter customer name" value={beanieFormData.customerInfo.customer || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Season:</label>
-                    <input type="text" placeholder="Enter season" />
+                    <input type="text" placeholder="Enter season" value={beanieFormData.customerInfo.season || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Style#:</label>
-                    <input type="text" placeholder="Enter style number" />
+                    <input type="text" placeholder="Enter style number" value={beanieFormData.customerInfo.styleNumber || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Style Name:</label>
-                    <input type="text" placeholder="Enter style name" />
+                    <input type="text" placeholder="Enter style name" value={beanieFormData.customerInfo.styleName || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Costed Quantity:</label>
-                    <input type="text" placeholder="Enter quantity" />
+                    <input type="text" placeholder="Enter quantity" value={beanieFormData.customerInfo.costedQuantity || ''} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Leadtime:</label>
-                    <input type="text" placeholder="Enter leadtime" />
+                    <input type="text" placeholder="Enter leadtime" value={beanieFormData.customerInfo.leadtime || ''} readOnly />
                   </div>
                 </div>
 

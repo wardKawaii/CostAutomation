@@ -1,4 +1,4 @@
-// App.js - All functions and scripts for the costing system
+// App.jsx - All functions and scripts for the costing system
 import * as XLSX from 'xlsx';
 
 // ========================
@@ -82,40 +82,27 @@ export const parseBeanieExcel = (workbook) => {
     const firstCell = String(row[0] || '').trim().toUpperCase();
     const fifthCell = String(row[4] || '').trim();
     
-    // Debug logging for overhead section
-    if (firstCell.includes('OVERHEAD') || firstCell === 'PROFIT' || firstCell === 'OVERHEAD') {
-      console.log(`Row ${i}: firstCell="${firstCell}", row[3]="${row[3]}", currentSection will be set to overhead`);
-    }
-    
     // Parse customer information from right side (columns E-F)
-    if (fifthCell === 'Customer:') {
-      parsedData.customerInfo.customer = 'EDWARD HANSEN';
+    if (fifthCell === 'Customer:' && row[5]) {
+      parsedData.customerInfo.customer = String(row[5]).trim();
     }
-    if (fifthCell === 'Season:') {
-      parsedData.customerInfo.season = 'F24';
+    if (fifthCell === 'Season:' && row[5]) {
+      parsedData.customerInfo.season = String(row[5]).trim();
     }
-    if (fifthCell === 'Style#:') {
-      parsedData.customerInfo.styleNumber = 'HELLY- 2203';
+    if (fifthCell === 'Style#:' && row[5]) {
+      parsedData.customerInfo.styleNumber = String(row[5]).trim();
     }
-    if (fifthCell === 'Style Name:') {
-      parsedData.customerInfo.styleName = 'BEANIE WOOL';
+    if (fifthCell === 'Style Name:' && row[5]) {
+      parsedData.customerInfo.styleName = String(row[5]).trim();
     }
-    if (fifthCell === 'Costed Quantity:') {
-      parsedData.customerInfo.costedQuantity = '100PCS';
+    if (fifthCell === 'Costed Quantity:' && row[5]) {
+      parsedData.customerInfo.costedQuantity = String(row[5]).trim();
     }
-    if (fifthCell === 'Leadtime:') {
-      parsedData.customerInfo.leadtime = '90 DAYS';
+    if (fifthCell === 'Leadtime:' && row[5]) {
+      parsedData.customerInfo.leadtime = String(row[5]).trim();
     }
-
-    // Initialize default values if not set
-    if (!parsedData.customerInfo.customer) parsedData.customerInfo.customer = 'EDWARD HANSEN';
-    if (!parsedData.customerInfo.season) parsedData.customerInfo.season = 'F24';
-    if (!parsedData.customerInfo.styleNumber) parsedData.customerInfo.styleNumber = 'HELLY- 2203';
-    if (!parsedData.customerInfo.styleName) parsedData.customerInfo.styleName = 'BEANIE WOOL';
-    if (!parsedData.customerInfo.costedQuantity) parsedData.customerInfo.costedQuantity = '100PCS';
-    if (!parsedData.customerInfo.leadtime) parsedData.customerInfo.leadtime = '90 DAYS';
     
-    // Detect sections - check for exact matches first
+    // Detect sections
     if (firstCell === 'YARN') {
       currentSection = 'yarn';
       continue;
@@ -140,11 +127,10 @@ export const parseBeanieExcel = (workbook) => {
     }
     
     // Skip header rows and total rows - be more specific
-    // BUT: Don't skip if we're in overhead section and it's "OVERHEAD" or "PROFIT" (actual data rows)
     const isOverheadDataRow = (currentSection === 'overhead' && (firstCell === 'OVERHEAD' || firstCell === 'PROFIT'));
     
     if (!isOverheadDataRow && (
-
+        firstCell.includes('SUB TOTAL') || 
         firstCell.includes('TOTAL MATERIAL') ||
         firstCell.includes('TOTAL FACTORY') ||
         firstCell.includes('CONSUMPTION') || 
@@ -233,22 +219,6 @@ export const parseBeanieExcel = (workbook) => {
             });
           }
         }
-
-        // Initialize with defaults if no packaging data found yet
-        if (parsedData.packaging.length === 0 && currentSection !== firstCell) {
-          parsedData.packaging = [
-            {
-              type: 'Standard Packaging',
-              notes: '',
-              cost: 21.00
-            },
-            {
-              type: 'Special Packaging',
-              notes: '',
-              cost: 0.00
-            }
-          ];
-        }
         shouldAdd = false;
       } else if (currentSection === 'overhead') {
         // For overhead/profit: col A = type, col B = notes, col C = cost
@@ -265,48 +235,37 @@ export const parseBeanieExcel = (workbook) => {
 
         // Only add if it's a valid overhead entry
         if (type === 'OVERHEAD' || type === 'PROFIT') {
-          parsedData.overhead.push({
-            type: type,
-            notes: notes,
-            cost: type === 'OVERHEAD' ? 0.20 : 0.59
-          });
-        }
-
-        // If we haven't found any overhead data and we're done with the section
-        if (parsedData.overhead.length === 0) {
-          parsedData.overhead = [
-            {
-              type: 'OVERHEAD',
-              notes: '',
-              cost: 0.20
-            },
-            {
-              type: 'PROFIT',
-              notes: '',
-              cost: 0.59
-            }
-          ];
+          const existingIndex = parsedData.overhead.findIndex(item => item.type === type);
+          if (existingIndex >= 0) {
+            parsedData.overhead[existingIndex] = {
+              type,
+              notes,
+              cost: type === 'OVERHEAD' ? 0.20 : 0.59
+            };
+          }
         }
         shouldAdd = false;
       }
       
-      const rowData = {
-        description: String(row[0] || '').trim(),
-        consumption: consumption,
-        price: price,
-        cost: Math.round(cost * 100) / 100 // Round to 2 decimals
-      };
-      
-      // Only add if there's actual data and description
-      if (rowData.description && shouldAdd) {
-        parsedData[currentSection].push(rowData);
+      if (shouldAdd) {
+        const rowData = {
+          description: String(row[0] || '').trim(),
+          consumption: consumption,
+          price: price,
+          cost: Math.round(cost * 100) / 100 // Round to 2 decimals
+        };
+        
+        // Only add if there's actual data and description
+        if (rowData.description) {
+          parsedData[currentSection].push(rowData);
+        }
       }
     }
   }
   
   console.log('Parsed Beanie Data:', parsedData);
   return parsedData;
-}; // end parseBeanieExcel
+}
 
 /**
  * Parse BallCaps Template Excel file
@@ -321,19 +280,11 @@ export const parseBallCapsExcel = (workbook) => {
   const parsedData = {
     customerInfo: {},
     fabrics: [],
-    fabricsTotal: 0,
     otherFabrics: [],
-    otherFabricsTotal: 0,
     trims: [],
-    trimsTotal: 0,
     operations: [],
-    operationsTotal: 0,
     packaging: [],
-    packagingTotal: 0,
     overhead: [],
-    overheadTotal: 0,
-    totalMaterialCost: 0,
-    totalFactoryCost: 0,
     notes: ''
   };
 
@@ -346,10 +297,10 @@ export const parseBallCapsExcel = (workbook) => {
     const firstCell = String(row[0] || '').trim().toUpperCase();
     
     // Detect sections
-    if (firstCell === 'FABRIC/S' || firstCell === 'FABRICS') {
+    if (firstCell === 'FABRICS') {
       currentSection = 'fabrics';
       continue;
-    } else if (firstCell.includes('OTHER FABRIC') || firstCell.includes('OTHER FABRICS')) {
+    } else if (firstCell.includes('OTHER FABRICS')) {
       currentSection = 'otherFabrics';
       continue;
     } else if (firstCell === 'TRIM/S' || firstCell === 'TRIMS') {
@@ -361,261 +312,60 @@ export const parseBallCapsExcel = (workbook) => {
     } else if (firstCell === 'PACKAGING') {
       currentSection = 'packaging';
       continue;
-    } else if (firstCell === 'OVERHEAD/PROFIT' || firstCell === 'OVERHEAD' || firstCell === 'PROFIT') {
+    } else if (firstCell.includes('OVERHEAD') || firstCell === 'PROFIT') {
       currentSection = 'overhead';
       continue;
     }
     
     // Skip header rows and total rows
-    if (firstCell.includes('TOTAL') || 
+    if (firstCell.includes('SUB TOTAL') || firstCell.includes('TOTAL') || 
         firstCell.includes('CONSUMPTION') || firstCell.includes('MATERIAL PRICE') ||
         firstCell.includes('SAM') || firstCell.includes('FACTORY NOTES') ||
         firstCell === '') {
       continue;
     }
     
-    // Parse customer information from right side
-    if (firstCell === 'CUSTOMER :' || firstCell === 'CUSTOMER:') {
-      parsedData.customerInfo.customer = String(row[1] || '').trim();
+    // Parse customer information
+    if (row[4] === 'Customer:' && row[5]) {
+      parsedData.customerInfo.customer = String(row[5]).trim();
     }
-    if (firstCell === 'SEASON :' || firstCell === 'SEASON:') {
-      parsedData.customerInfo.season = String(row[1] || '').trim();
+    if (row[4] === 'Season:' && row[5]) {
+      parsedData.customerInfo.season = String(row[5]).trim();
     }
-    if (firstCell === 'STYLE# :' || firstCell === 'STYLE#:') {
-      parsedData.customerInfo.styleNumber = String(row[1] || '').trim();
+    if (row[4] === 'Style#:' && row[5]) {
+      parsedData.customerInfo.styleNumber = String(row[5]).trim();
     }
-    if (firstCell === 'STYLE NAME :' || firstCell === 'STYLE NAME:') {
-      parsedData.customerInfo.styleName = String(row[1] || '').trim();
+    if (row[4] === 'Style Name:' && row[5]) {
+      parsedData.customerInfo.styleName = String(row[5]).trim();
     }
-    if (firstCell === 'MOQ :' || firstCell === 'MOQ:') {
-      parsedData.customerInfo.moq = String(row[1] || '').trim();
+    if (row[4] === 'MOQ:' && row[5]) {
+      parsedData.customerInfo.moq = String(row[5]).trim();
     }
-    if (firstCell === 'LEADTIME :' || firstCell === 'LEADTIME:') {
-      parsedData.customerInfo.leadtime = String(row[1] || '').trim();
+    if (row[4] === 'Leadtime:' && row[5]) {
+      parsedData.customerInfo.leadtime = String(row[5]).trim();
     }
-
-    // Set default values if not found in Excel
-    if (!parsedData.customerInfo.customer) parsedData.customerInfo.customer = 'ROSSIGNOL';
-    if (!parsedData.customerInfo.season) parsedData.customerInfo.season = 'SS22';
-    if (!parsedData.customerInfo.styleNumber) parsedData.customerInfo.styleNumber = 'FL20214';
-    if (!parsedData.customerInfo.styleName) parsedData.customerInfo.styleName = 'CORPORATE CAP FLAT BRIM CM 2';
-    if (!parsedData.customerInfo.moq) parsedData.customerInfo.moq = '800';
-    if (!parsedData.customerInfo.leadtime) parsedData.customerInfo.leadtime = '100 days';
     
     // Parse data rows
     if (currentSection && firstCell && !firstCell.includes('SUB') && !firstCell.includes('TOTAL')) {
-      let rowData = {};
-
-      if (currentSection === 'fabrics') {
-        const consumption = parseFloat(String(row[1]).replace(/,/g, '')) || 0;
-        const price = parseFloat(String(row[2]).replace(/,/g, '')) || 0;
-        const cost = parseFloat(String(row[3]).replace(/,/g, '')) || 0;
-        rowData = {
-          description: String(row[0] || '').trim(),
-          consumption: consumption,
-          price: price,
-          cost: cost,
-          notes: ''
-        };
-      } 
-      else if (currentSection === 'otherFabrics') {
-        const consumption = parseFloat(String(row[1]).replace(/,/g, '')) || 0;
-        const price = parseFloat(String(row[2]).replace(/,/g, '')) || 0;
-        const cost = parseFloat(String(row[3]).replace(/,/g, '')) || 0;
-        rowData = {
-          description: String(row[0] || '').trim(),
-          consumption: consumption,
-          price: price,
-          cost: cost,
-          notes: ''
-        };
-      }
-      else if (currentSection === 'trims') {
-        const consumption = parseFloat(String(row[1]).replace(/,/g, '')) || 0;
-        const price = parseFloat(String(row[2]).replace(/,/g, '')) || 0;
-        const cost = parseFloat(String(row[3]).replace(/,/g, '')) || 0;
-        rowData = {
-          description: String(row[0] || '').trim(),
-          consumption: consumption,
-          price: price,
-          cost: cost
-        };
-      }
-      else if (currentSection === 'operations') {
-        const sam = parseFloat(String(row[1]).replace(/,/g, '')) || 0;
-        const cost = parseFloat(String(row[2]).replace(/,/g, '')) || 0;
-        rowData = {
-          description: String(row[0] || '').trim(),
-          sam: sam,
-          cost: cost,
-          notes: 'add fabric surcharge USD0.04 if under MOQ 400 pcs (3800 pcs ) for DTM color roof +sweatband+suggest to use FD available cotton twill'
-        };
-      }
-      else if (currentSection === 'packaging' || currentSection === 'overhead') {
-        rowData = {
-          type: String(row[0] || '').trim(),
-          notes: String(row[1] || '').trim(),
-          cost: parseFloat(String(row[2]).replace(/,/g, '')) || 0
-        };
-      }
-
-      // Format numbers to match Excel precision
-      if (rowData.price) rowData.price = parseFloat(rowData.price.toFixed(4));
-      if (rowData.cost) rowData.cost = parseFloat(rowData.cost.toFixed(2));
-      if (rowData.consumption) rowData.consumption = parseFloat(rowData.consumption.toFixed(3));
+      const consumption = parseFloat(row[1]) || 0;
+      const price = parseFloat(row[2]) || 0;
+      const cost = consumption * price; // Calculate cost automatically
       
-      if (rowData.description || rowData.type || rowData.consumption || rowData.price || rowData.cost) {
+      const rowData = {
+        description: String(row[0] || '').trim(),
+        consumption: consumption,
+        price: price,
+        cost: Math.round(cost * 100) / 100 // Round to 2 decimals
+      };
+      
+      if (rowData.description || rowData.consumption || rowData.price) {
         parsedData[currentSection].push(rowData);
       }
     }
   }
-
-  // Set default data if sections are empty
-  if (!parsedData.fabrics.length) {
-    parsedData.fabrics = [
-      {
-        description: 'Main crown - 100% cotton twill 6oz/h',
-        consumption: 0.11,
-        price: 4.5,
-        cost: 0.53,
-        notes: ''
-      },
-      {
-        description: 'bill - 100% PCY cotton twill (stiff/sand',
-        consumption: 0.09,
-        price: 2.7,
-        cost: 0.33,
-        notes: ''
-      }
-    ];
-    parsedData.fabricsTotal = 0.86;
-  }
-
-  if (!parsedData.otherFabrics.length) {
-    parsedData.otherFabrics = [
-      {
-        description: '#089M 100%-Recycled polyes',
-        consumption: 0.03,
-        price: 2.2,
-        cost: 0.07,
-        notes: ''
-      },
-      {
-        description: 'foam padding for sweatband',
-        consumption: 0.03,
-        price: 1.6,
-        cost: 0.05,
-        notes: ''
-      },
-      {
-        description: 'interlining for sweatband',
-        consumption: 0.04,
-        price: 0.6,
-        cost: 0.02,
-        notes: ''
-      },
-      {
-        description: '#102N polyester buckram for',
-        consumption: 0.035,
-        price: 3.5,
-        cost: 0.13,
-        notes: ''
-      }
-    ];
-    parsedData.otherFabricsTotal = 0.27;
-  }
-
-  if (!parsedData.trims.length) {
-    parsedData.trims = [
-      {
-        description: 'top button',
-        consumption: 1,
-        price: 0.06,
-        cost: 0.06
-      },
-      {
-        description: 'plastic snap',
-        consumption: 1,
-        price: 0.06,
-        cost: 0.06
-      },
-      {
-        description: '3d emby logo on front',
-        consumption: 1,
-        price: 0.75,
-        cost: 0.75
-      }
-    ];
-  }
-
-  if (!parsedData.operations.length) {
-    parsedData.operations = [
-      {
-        description: 'add fabric surcharge USD0.04 if under MOQ (400 pcs)',
-        sam: 1.0,
-        cost: 0.02,
-        notes: 'roof +sweatband+suggest to use FD available cotton twill'
-      }
-    ];
-  }
-
-  if (!parsedData.packaging.length) {
-    parsedData.packaging = [
-      {
-        type: 'Standard Packaging',
-        notes: '',
-        cost: 0.25
-      },
-      {
-        type: 'Special Packaging',
-        notes: '',
-        cost: 0.06
-      }
-    ];
-  }
-
-  if (!parsedData.overhead.length) {
-    parsedData.overhead = [
-      {
-        type: 'OVERHEAD',
-        notes: '',
-        cost: 0.25
-      },
-      {
-        type: 'PROFIT',
-        notes: '',
-        cost: 0.80
-      }
-    ];
-  }
   
-  // Set exact totals from template
-  parsedData.fabricsTotal = 0.86;  // Main crown + bill total
-  parsedData.otherFabricsTotal = 0.27;  // Other fabrics total
-  parsedData.trimsTotal = 0.96;  // Trims total
-  parsedData.operationsTotal = 0.00;  // Operations total
-  parsedData.packagingTotal = 0.00;  // Packaging total
-  parsedData.overheadTotal = 1.05;  // Overhead + Profit total
-
-  // Set exact total material cost from template
-  parsedData.totalMaterialCost = 2.09;  // Total material and submaterials cost
-
-  // Set exact total factory cost from template
-  parsedData.totalFactoryCost = 3.16;  // Total factory cost
-
-  // Round all totals to 2 decimal places
-  parsedData.fabricsTotal = Math.round(parsedData.fabricsTotal * 100) / 100;
-  parsedData.otherFabricsTotal = Math.round(parsedData.otherFabricsTotal * 100) / 100;
-  parsedData.trimsTotal = Math.round(parsedData.trimsTotal * 100) / 100;
-  parsedData.operationsTotal = Math.round(parsedData.operationsTotal * 100) / 100;
-  parsedData.packagingTotal = Math.round(parsedData.packagingTotal * 100) / 100;
-  parsedData.overheadTotal = Math.round(parsedData.overheadTotal * 100) / 100;
-  parsedData.totalMaterialCost = Math.round(parsedData.totalMaterialCost * 100) / 100;
-  parsedData.totalFactoryCost = Math.round(parsedData.totalFactoryCost * 100) / 100;
-
-  console.log('Parsed BallCaps Data:', parsedData);
   return parsedData;
-};
+}
 
 // ========================
 // DRAG & DROP FUNCTIONS
